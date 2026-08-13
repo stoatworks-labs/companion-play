@@ -42,11 +42,16 @@ model, and making 2 GB of RAM go far enough.
 | `/var/lib/companion-play-kiosk` | Chromium profile | rootfs (p8) |
 
 The split is the important part. The PLAY's `rootfs` partition is a fixed
-**3.5 GiB**, and the build fills roughly 2.6–2.7 GB of it; `userdata` grows to
-the end of the eMMC. Putting Companion's mutable state on `userdata` does two
-things at once: it removes the growth risk from the partition that cannot grow,
-and it means **reflashing the rootfs to upgrade Companion does not wipe an
-operator's configuration.** For an appliance that is worth more than the space.
+**3.5 GiB** and the build fills **3.12 GiB** of it (measured, not estimated —
+the first build came out at 3.47 GiB and did *not* fit until apt's leftovers
+were cleaned; see `docs/02-verification.md`). `userdata` grows to the end of the
+eMMC. Putting Companion's mutable state there does two things at once: it
+removes the growth risk from the partition that cannot grow, and it means
+**reflashing the rootfs to upgrade Companion does not wipe an operator's
+configuration.** For an appliance that is worth more than the space.
+
+Headroom on p8 is about **280 MB**, which is not much. If the base ever grows,
+`/opt/companion-modules` (458 MB) moves to `userdata` too.
 
 `/var/lib/companion-play` is the service account's *home directory*, which is
 all that is needed to move Companion's state: Companion derives

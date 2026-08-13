@@ -138,21 +138,40 @@ skip is precisely the outcome the check exists to prevent.
 
 ## Disk
 
+Measured on the finished image, not estimated from the parts:
+
 | Item | Size |
 |---|---|
-| `/opt/companion` (unpacked) | **588 MB** |
-| — of which `node-runtimes/` (node18 90 + node22 119 + node26 142) | 351 MB |
-| Extracted module bundle | **459 MB** |
-| Whole Companion Pi rootfs, for reference | 2.5 GB |
+| `/usr` (Armbian minimal + X + openbox + Chromium) | **2.0 GB** |
+| — of which `/usr/lib/chromium` | 366 MB |
+| `/opt` | **1.1 GB** |
+| — `/opt/companion` | 588 MB |
+| — — of which `node-runtimes/` (node18 90 + node22 119 + node26 142) | 351 MB |
+| — `/opt/companion-modules` (808 modules, post-filter) | 458 MB |
+| `/boot` | 116 MB |
+| `/var` | 26 MB |
+| **Total used** | **3.12 GiB** (3,349,229,568 bytes) |
 
-Against the PLAY's **3.5 GiB** `rootfs` partition (p8), with Armbian minimal, X
-and Chromium also to fit, this is tight but workable — roughly 2.6–2.7 GB used.
-Companion's own growth (database, logs, user modules) is therefore deliberately
-moved onto `userdata` (p9), which grows to the end of the eMMC.
+### The estimate was wrong, and it mattered
 
-Trimmable if it ever gets tight, in order of return: the `.map` files
-(~27 MB), `docs.zip` (10 MB), and `node18` (90 MB) if no bundled module
-requires it — **unverified, check before cutting.**
+An earlier version of this file predicted "roughly 2.6–2.7 GB". The first real
+build came out at **3.47 GiB** — against a `rootfs` partition (p8) of exactly
+**3.5 GiB**, which after ext4 metadata and journal leaves about 3.4 GiB usable.
+**It did not fit**, and only building it showed that. X and Chromium cost
+considerably more than guessed.
+
+**388 MB of that was apt's leftovers** — downloaded `.deb`s and package lists,
+never cleaned. `apt-get clean` plus removing `/var/lib/apt/lists` recovered
+**362 MB** and took `/var` from 388 MB to 26 MB. That is the difference between
+fitting and not, on a partition that cannot be grown.
+
+Current headroom against p8: roughly **280 MB**. Not comfortable.
+
+Trimmable if it gets tight, in order of return: **`node18` (90 MB)** if no
+bundled module requires it — **unverified, check before cutting**; Companion's
+`.map` files (~27 MB); `docs.zip` (10 MB). Beyond that, `/opt/companion-modules`
+(458 MB) can move to `userdata` alongside the rest of the state, which is the
+real answer if the base ever grows.
 
 ## Configuration is a generated YAML
 

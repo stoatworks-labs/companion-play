@@ -270,15 +270,40 @@ done
 # modules. MIT requires the copyright notice and licence text to travel with
 # them, so they travel in the image, not only in the repo's ATTRIBUTIONS.md —
 # the person holding a flashed card is the one who needs them.
+#
+# NOT conditional. An earlier version guarded this with `if [ -f … ]` on a path
+# the tarball does not contain, so the build cheerfully produced an image whose
+# ATTRIBUTIONS.md pointed at a licence file that was never installed. If the
+# licence is missing, the right outcome is a failed build.
 log "installing licence notices"
-if [ -f "${ROOT}${CP_INSTALL_DIR}/LICENSE.md" ]; then
-  install -m 0644 "${ROOT}${CP_INSTALL_DIR}/LICENSE.md" \
-    "${ROOT}/usr/share/doc/companion-play/companion-LICENSE.md"
-fi
+COMPANION_LICENCE="${CACHE}/companion-LICENSE-${COMPANION_VERSION}.md"
+[ -s "$COMPANION_LICENCE" ] \
+  || die "no ${COMPANION_LICENCE} — run 02-fetch-companion.sh.
+  The image redistributes Companion; its licence text has to travel with it."
+install -m 0644 "$COMPANION_LICENCE" \
+  "${ROOT}/usr/share/doc/companion-play/companion-LICENSE.md"
+
 install -m 0644 "${REPO_ROOT}/ATTRIBUTIONS.md" \
   "${ROOT}/usr/share/doc/companion-play/ATTRIBUTIONS.md"
 install -m 0644 "${REPO_ROOT}/LICENSE" \
   "${ROOT}/usr/share/doc/companion-play/LICENSE"
+
+# --- reclaim -----------------------------------------------------------------
+#
+# apt leaves its downloaded .debs and package lists behind, and on this image
+# that was 388 MB of a 3.47 GiB total — measured, not guessed. It matters more
+# here than on most appliances: the PLAY's rootfs partition is a fixed 3.5 GiB
+# that cannot be grown, so this is the difference between fitting and not.
+#
+# Runs after the last apt work and after the first-login assertion, so it cannot
+# disturb either.
+log "reclaiming space"
+in_chroot "$ROOT" apt-get clean
+rm -rf "${ROOT}/var/lib/apt/lists/"*
+rm -rf "${ROOT}/var/cache/apt/archives/"*.deb
+rm -rf "${ROOT}/var/log/"*.log "${ROOT}/var/log/journal/"* 2>/dev/null || true
+
+log "rootfs now uses $(du -sh --exclude=./proc --exclude=./sys --exclude=./dev "$ROOT" 2>/dev/null | cut -f1)"
 
 # --- build stamp -------------------------------------------------------------
 {

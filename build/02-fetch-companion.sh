@@ -49,6 +49,32 @@ grep -c '^[^/]*/resources/main\.js$' "$LISTING" >/dev/null \
   03-make-image.sh extracts '*/resources' and would silently produce an empty
   ${CP_INSTALL_DIR}."
 
+# --- Companion's licence text ------------------------------------------------
+#
+# MIT requires the copyright notice to travel with the software, and an image is
+# a distribution. Companion's own LICENSE.md is NOT in the release tarball — it
+# lives inside app.asar — so it is fetched from the tag that matches the pinned
+# build and installed into the image next to the rest of the notices.
+#
+# Found the hard way: the first version of this shipped an ATTRIBUTIONS.md
+# pointing at a licence file the build never created, because the copy step was
+# guarded by an `if [ -f ... ]` on a path that does not exist in the tarball. A
+# notice obligation silently satisfied by nothing is worse than none.
+COMPANION_LICENCE="${CACHE}/companion-LICENSE-${COMPANION_VERSION}.md"
+COMPANION_LICENCE_URL="https://raw.githubusercontent.com/bitfocus/companion/v${COMPANION_VERSION}/LICENSE.md"
+
+if [ -s "$COMPANION_LICENCE" ]; then
+  log "using cached Companion licence text"
+else
+  log "fetching Companion ${COMPANION_VERSION} licence text"
+  curl -fSL --retry 3 -o "${COMPANION_LICENCE}.part" "$COMPANION_LICENCE_URL"
+  mv "${COMPANION_LICENCE}.part" "$COMPANION_LICENCE"
+fi
+
+grep -q 'MIT License' "$COMPANION_LICENCE" \
+  || die "${COMPANION_LICENCE} does not look like Companion's licence.
+  Expected the MIT text in Part 1. Check ${COMPANION_LICENCE_URL}."
+
 # --- Offline module bundle ---------------------------------------------------
 #
 # There is no public API for bundles — it comes out of the Companion web UI

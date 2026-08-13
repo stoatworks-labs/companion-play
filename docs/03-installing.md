@@ -48,9 +48,12 @@ Not built yet. The shape, from `polecat`:
 3. `dd` both into place over SSH and reboot. No case opening, no USB, no
    recovery dance.
 
-`rootfs` must fit **3.5 GiB**. The build currently uses roughly 2.6–2.7 GB
-(see `docs/02-verification.md`), so it fits, but the headroom is not large —
-which is the reason for the next section.
+`rootfs` must fit **3.5 GiB**, which after ext4 metadata and journal is about
+3.4 GiB usable. The build uses **3.12 GiB** — so it fits, with roughly 280 MB
+spare. That is not much, and it was not free: the first build came out at
+3.47 GiB and would not have fitted at all (see `docs/02-verification.md`).
+Anything added to the image from here has to be counted, which is the reason
+for the next section.
 
 ## Companion's state goes on `userdata`
 
