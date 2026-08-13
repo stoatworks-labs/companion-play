@@ -20,17 +20,30 @@ TGZ="${CACHE}/${COMPANION_TARBALL}"
 if [ -f "$TGZ" ]; then
   log "using cached ${COMPANION_TARBALL}"
 else
-  log "downloading ${COMPANION_TARBALL} (~200 MiB)"
+  log "downloading ${COMPANION_TARBALL} (~360 MiB)"
   curl -fSL --retry 3 -o "${TGZ}.part" "$COMPANION_URL"
   mv "${TGZ}.part" "$TGZ"
+fi
+
+# TRAP, paid for here: do NOT write these checks as `tar -tzf … | grep -q …`.
+# Under `set -o pipefail`, grep -q exits at the first match and closes the pipe,
+# tar dies of SIGPIPE, and the pipeline reports failure — so a SUCCESSFUL match
+# fails the build. It presents as "the layout changed" on a perfectly good
+# download. Listing once into a file also avoids decompressing 360 MB twice.
+log "checking tarball layout"
+LISTING="${CACHE}/${COMPANION_TARBALL}.listing"
+if [ ! -s "$LISTING" ]; then
+  # Written aside and moved, so an interrupted listing cannot be mistaken for a
+  # complete one on the next run and pass the checks below by omission.
+  tar -tzf "$TGZ" > "${LISTING}.part"
+  mv "${LISTING}.part" "$LISTING"
 fi
 
 # No published checksum to pin against, so assert on the shape instead: the
 # install is `--strip-components=2 --wildcards '*/resources'`, and if that
 # pattern matches nothing the extract silently produces an empty /opt/companion
 # and the image boots into a service that exits immediately.
-log "checking tarball layout"
-tar -tzf "$TGZ" | grep -q '/resources/main\.js$' \
+grep -c '^[^/]*/resources/main\.js$' "$LISTING" >/dev/null \
   || die "no */resources/main.js in ${COMPANION_TARBALL}.
   The tarball layout changed, or the download is truncated. The install in
   03-make-image.sh extracts '*/resources' and would silently produce an empty
@@ -69,10 +82,15 @@ log "module bundle staged: $(du -h "$BUNDLE" | cut -f1)"
 # layout --extra-module-path expects, which is why there is no import step.
 # Verify that, because a format change would produce an image with zero modules
 # and no error anywhere.
+#
+# Same pipefail rule as above: count, do not `grep -q` a pipeline.
 log "checking bundle layout"
-tar -tzf "$BUNDLE" | grep -q '/companion/manifest\.json$' \
-  || die "no */companion/manifest.json in ${MODULE_BUNDLE}.
-  The bundle format changed. companion-play loads it via --extra-module-path,
-  which requires <module>/companion/manifest.json."
+manifests="$(tar -tzf "$BUNDLE" | grep -c '/companion/manifest\.json$' || true)"
+[ "${manifests:-0}" -gt 100 ] \
+  || die "only ${manifests:-0} */companion/manifest.json entries in ${MODULE_BUNDLE}.
+  The bundle format changed, or this is not an offline module bundle.
+  companion-play loads it via --extra-module-path, which requires
+  <module>/companion/manifest.json."
+log "bundle carries ${manifests} modules"
 
 log "vendor artifacts ready"
