@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Build a companion-play image, end to end.
+#
+# Steps are separately runnable; this just runs them in order. 02 is the only
+# one that touches the network at image-build time and the only one that does
+# not need root, which is why it is its own step — a 600 MB re-download because
+# a chroot step failed is a bad afternoon.
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+build/01-fetch-base.sh
+build/02-fetch-companion.sh
+build/03-make-image.sh

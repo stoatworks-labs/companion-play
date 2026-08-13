@@ -1,0 +1,15 @@
+# Build products and caches
+work/
+out/
+cache/
+
+# Vendor artifacts. Companion and its module bundle are Bitfocus's to
+# distribute; this repo pins versions and never carries the bytes.
+vendor/*
+!vendor/.gitkeep
+
+# SSH keys for the built image
+secrets/*
+!secrets/.gitkeep
+
+.DS_Store

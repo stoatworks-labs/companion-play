@@ -1,0 +1,75 @@
+#!/bin/bash
+# The X session: a window manager and Chromium showing Companion's web UI.
+#
+# Run by companion-play-kiosk via xinit, with DISPLAY already set.
+#
+# This is NOT `chromium --kiosk`. Kiosk mode removes the tab strip and blocks
+# the fullscreen toggle, and the display here is meant to be *used*: the
+# operator gets the admin UI and any web-button pages as tabs, driven by a
+# keyboard, mouse or touchscreen on the USB port.
+#
+# openbox earns its few MB. With no window manager, Chromium's fullscreen
+# request has nothing to grant it and dialogs open unmapped — a window that
+# looks right until the first popup and then appears to hang.
+
+set -eu
+
+CONF=/etc/companion-play/kiosk.conf
+# shellcheck disable=SC1090
+[ -f "$CONF" ] && . "$CONF"
+
+KIOSK_URL="${KIOSK_URL:-http://127.0.0.1:8000/}"
+KIOSK_EXTRA_URLS="${KIOSK_EXTRA_URLS:-}"
+KIOSK_GPU="${KIOSK_GPU:-off}"
+KIOSK_HIDE_CURSOR="${KIOSK_HIDE_CURSOR:-0}"
+KIOSK_WINDOW_SIZE="${KIOSK_WINDOW_SIZE:-}"
+
+# No screen blanking on a wall-mounted panel.
+xset s off      || true
+xset -dpms      || true
+xset s noblank  || true
+
+# Only for a touch-only install. With a keyboard and mouse attached, hiding the
+# pointer is actively unhelpful, so it is off by default.
+if [ "$KIOSK_HIDE_CURSOR" = "1" ]; then
+  unclutter -idle 3 &
+fi
+
+openbox &
+WM_PID=$!
+
+CHROME_FLAGS=(
+  --no-first-run
+  --no-default-browser-check
+  --disable-session-crashed-bubble
+  --disable-infobars
+  --password-store=basic
+  --start-maximized
+  # Companion's own UI is served over plain HTTP on the loopback; without this
+  # Chromium's autoplay/permission gating treats it as an insecure origin.
+  --unsafely-treat-insecure-origin-as-secure="${KIOSK_URL}"
+  --user-data-dir=/var/lib/companion-play-kiosk
+)
+
+# The PLAY's Mali-450 is GLES2-only and, on a mainline kernel, driven by Lima.
+# Chromium's GPU path buys nothing for a DOM-only UI and is the likeliest
+# source of a blank window, so it is off unless someone deliberately turns it
+# on to test. See docs/02-verification.md — this has NOT been tried on hardware.
+if [ "$KIOSK_GPU" != "on" ]; then
+  CHROME_FLAGS+=(--disable-gpu)
+fi
+
+[ -n "$KIOSK_WINDOW_SIZE" ] && CHROME_FLAGS+=(--window-size="$KIOSK_WINDOW_SIZE")
+
+# Wait for Companion to answer before opening the tab. Chromium caches the
+# failure page, so a browser that starts first shows "unable to connect" and
+# stays there long after the server is up.
+for _ in $(seq 1 120); do
+  curl -fsS -o /dev/null "$KIOSK_URL" && break
+  sleep 1
+done
+
+# shellcheck disable=SC2086
+chromium "${CHROME_FLAGS[@]}" "$KIOSK_URL" $KIOSK_EXTRA_URLS
+
+kill "$WM_PID" 2>/dev/null || true

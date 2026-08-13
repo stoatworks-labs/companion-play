@@ -1,0 +1,13 @@
+#!/bin/bash
+# Bring up the HDMI display. Invoked by companion-kiosk.service.
+#
+# All this does is start X on vt1 and hand it the session script; the session
+# script owns the configuration, so there is one place to look.
+#
+# `-novtswitch` keeps the console from stealing the display back on exit, which
+# on a headless-managed appliance otherwise leaves a black screen after a
+# Chromium crash rather than a restarted session.
+
+set -eu
+
+exec xinit /usr/local/bin/companion-play-session -- :0 vt1 -nolisten tcp -novtswitch

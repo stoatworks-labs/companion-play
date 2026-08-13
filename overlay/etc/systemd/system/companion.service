@@ -1,0 +1,24 @@
+[Unit]
+Description=Bitfocus Companion (companion-play)
+After=network-online.target
+Wants=network-online.target
+# Both modes drive the same surfaces over the same USB port, so they are
+# mutually exclusive. companion-play-mode enforces this by enabling one and
+# disabling the other; the Conflicts= is the backstop for a hand-started unit.
+Conflicts=companion-satellite.service
+
+[Service]
+Type=simple
+User=companion
+Environment=COMPANION_IN_SYSTEMD=1
+# Companion 4.3+ generates its surface udev rules at runtime and shells out to
+# install them. Without this the rules never land and Stream Decks are visible
+# to root only — which presents as "the surface is detected but shows nothing".
+Environment=COMPANION_SYNC_UDEV_RULES_COMMAND="sudo /usr/local/sbin/companion-sync-udev-rules"
+ExecStart=/usr/local/bin/companion-play-launch
+Restart=on-failure
+KillSignal=SIGINT
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

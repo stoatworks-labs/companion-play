@@ -1,0 +1,22 @@
+#!/bin/bash
+# Start the Companion server. Invoked by companion.service, never by hand.
+#
+# This is companion-pi's launch.sh reduced to the one case that exists here:
+# a modern release with a config-tool. The 2.x branch and the pre-config-tool
+# fallback are both deleted rather than carried — an appliance pins its own
+# Companion version, so the "which install is this" question cannot arise.
+
+set -eu
+
+INSTALL_DIR=/opt/companion
+NODE_EXE="${INSTALL_DIR}/node-runtimes/main/bin/node"
+
+cd "$INSTALL_DIR"
+
+# `generate` runs in a subshell and exits; `exec` then replaces this script, so
+# the final process tree is just `node main.js` under systemd.
+export COMPANION_CONFIG_FILE=/etc/companion/config.yaml
+# shellcheck disable=SC1090
+source <("$NODE_EXE" "${INSTALL_DIR}/config-tool.js" generate)
+
+exec "$NODE_EXE" "${INSTALL_DIR}/main.js" "$@"

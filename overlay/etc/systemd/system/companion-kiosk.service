@@ -1,0 +1,26 @@
+[Unit]
+Description=companion-play HDMI display (X + Chromium)
+After=companion.service systemd-user-sessions.service
+Wants=companion.service
+# In satellite mode there is no local web UI to show, so companion-play-mode
+# disables this unit rather than pointing it somewhere useless.
+Conflicts=companion-satellite.service
+
+[Service]
+Type=simple
+User=cplay
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal
+UtmpIdentifier=tty1
+UtmpMode=user
+ExecStart=/usr/local/bin/companion-play-kiosk
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

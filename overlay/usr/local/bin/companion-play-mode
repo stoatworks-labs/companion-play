@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# Switch this unit between Companion server and Companion Satellite.
+#
+# Both drive the same surfaces over the same single USB port, so they are
+# mutually exclusive — this enables one and disables the other rather than
+# leaving that to systemd's Conflicts=, which only decides who wins a race.
+#
+# The display follows the mode: in satellite mode there is no local web UI, so
+# the kiosk is stopped rather than left pointing at a dead port.
+
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+usage: companion-play-mode [server|satellite|status]
+
+  server      run the full Companion host (admin UI on :8000)
+  satellite   run Companion Satellite against a remote Companion
+  status      report the current mode
+
+With no argument, reports status.
+EOF
+}
+
+current_mode() {
+  if systemctl is-enabled --quiet companion-satellite.service 2>/dev/null; then
+    echo satellite
+  elif systemctl is-enabled --quiet companion.service 2>/dev/null; then
+    echo server
+  else
+    echo none
+  fi
+}
+
+require_root() {
+  [ "$(id -u)" = "0" ] || { echo "Must be run as root. Try sudo companion-play-mode $*" >&2; exit 1; }
+}
+
+case "${1:-status}" in
+  status|"")
+    mode="$(current_mode)"
+    echo "mode: ${mode}"
+    case "$mode" in
+      server)    systemctl is-active --quiet companion.service           && echo "companion: running"           || echo "companion: NOT running" ;;
+      satellite) systemctl is-active --quiet companion-satellite.service && echo "companion-satellite: running" || echo "companion-satellite: NOT running" ;;
+    esac
+    systemctl is-enabled --quiet companion-kiosk.service 2>/dev/null && echo "display: enabled" || echo "display: disabled"
+    ;;
+
+  server)
+    require_root "$@"
+    systemctl disable --now companion-satellite.service 2>/dev/null || true
+    systemctl enable  --now companion.service
+    systemctl enable  --now companion-kiosk.service 2>/dev/null || true
+    echo "mode: server"
+    ;;
+
+  satellite)
+    require_root "$@"
+    # Refuse rather than half-switch. Satellite is a separate Bitfocus product
+    # with its own arm64 build; if the image was made without it, enabling a
+    # unit whose ExecStart does not exist would stop the server and start
+    # nothing — the unit would go dark with no obvious cause.
+    if [ ! -x /opt/companion-satellite/companion-satellite ]; then
+      echo "Companion Satellite is not installed on this image." >&2
+      echo "  expected /opt/companion-satellite/companion-satellite" >&2
+      echo "  Build an image with CP_SATELLITE=1, or install it by hand." >&2
+      exit 1
+    fi
+    systemctl disable --now companion-kiosk.service 2>/dev/null || true
+    systemctl disable --now companion.service 2>/dev/null || true
+    systemctl enable  --now companion-satellite.service
+    echo "mode: satellite"
+    ;;
+
+  -h|--help|help) usage ;;
+  *) usage >&2; exit 2 ;;
+esac
