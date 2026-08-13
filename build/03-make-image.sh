@@ -24,13 +24,26 @@ BUNDLE="${VENDOR}/${MODULE_BUNDLE}"
 [ -f "$TGZ" ]    || die "no ${TGZ} — run 02-fetch-companion.sh first"
 [ -f "$BUNDLE" ] || die "no ${BUNDLE} — run 02-fetch-companion.sh first"
 
-# --- SSH keys ----------------------------------------------------------------
-# A headless appliance with no key in it is a brick. Refuse to build one.
+# --- How anyone gets in ------------------------------------------------------
+#
+# An appliance with no key AND no password is a brick, so refuse to build one.
+# Which of the two is acceptable depends on who the image is for — see
+# CP_DEFAULT_PASSWORD in config.sh.
 KEYFILE="${REPO_ROOT}/secrets/authorized_keys"
-if [ ! -s "$KEYFILE" ]; then
-  die "no ${KEYFILE}.
-  Put at least one public key there (it is gitignored). Without it the image
-  boots with no way in — there is no console password by design."
+HAVE_KEY=0
+[ -s "$KEYFILE" ] && HAVE_KEY=1
+
+if [ "$HAVE_KEY" = "0" ] && [ -z "$CP_DEFAULT_PASSWORD" ]; then
+  die "no way into the image.
+  Either put a public key in ${KEYFILE} (it is gitignored), or set
+  CP_DEFAULT_PASSWORD in build/config.sh. With neither, the image boots, joins
+  the network, and lets nobody in."
+fi
+
+if [ -n "$CP_DEFAULT_PASSWORD" ]; then
+  warn "building with a DEFAULT PASSWORD for ${CP_ADMIN_USER}: ${CP_DEFAULT_PASSWORD}"
+  warn "that is correct for a published image and wrong for a unit on a show"
+  warn "network — clear CP_DEFAULT_PASSWORD for a key-only build."
 fi
 
 log "creating ${IMG}"
@@ -112,7 +125,27 @@ tar -xzf "$BUNDLE" -C "${ROOT}${CP_MODULE_DIR}"
 
 modcount="$(find "${ROOT}${CP_MODULE_DIR}" -maxdepth 3 -name manifest.json -path '*/companion/*' | wc -l)"
 [ "$modcount" -gt 100 ] || die "only ${modcount} modules extracted — the bundle is not what we expect"
-log "modules installed: ${modcount}"
+log "modules extracted: ${modcount}"
+
+# --- module licence policy ---------------------------------------------------
+#
+# An image redistributes every module in it, which is not the same obligation as
+# an operator downloading the bundle from Bitfocus. Keep only the licences on
+# the allow-list, and write down what shipped.
+#
+# Runs the target's own Node inside the chroot — the same trick as config-tool,
+# and the reason the build host has to be aarch64.
+log "applying module licence policy"
+mkdir -p "${ROOT}/usr/share/doc/companion-play"
+install -D -m 0644 "${REPO_ROOT}/build/filter-modules.mjs" "${ROOT}/tmp/filter-modules.mjs"
+in_chroot "$ROOT" "${CP_INSTALL_DIR}/node-runtimes/main/bin/node" \
+  /tmp/filter-modules.mjs "$CP_MODULE_DIR" "$CP_LICENCE_ALLOW" \
+  /usr/share/doc/companion-play/modules.tsv \
+  || die "module licence policy failed — see the list above"
+rm -f "${ROOT}/tmp/filter-modules.mjs"
+
+modcount="$(find "${ROOT}${CP_MODULE_DIR}" -maxdepth 3 -name manifest.json -path '*/companion/*' | wc -l)"
+log "modules shipped: ${modcount}"
 
 # --- users -------------------------------------------------------------------
 #
@@ -134,16 +167,24 @@ in_chroot "$ROOT" install -d -o "$CP_SERVICE_USER" -g "$CP_SERVICE_USER" \
 
 in_chroot "$ROOT" useradd -m -s /bin/bash \
   -G sudo,video,render,input,audio,plugdev "$CP_ADMIN_USER" 2>/dev/null || true
-# No password: keys only. An appliance with a guessable password on a show
-# network is worse than one you have to bring a key to.
-in_chroot "$ROOT" passwd -l "$CP_ADMIN_USER" >/dev/null 2>&1 || true
 
-install -d -m 0700 "${ROOT}/home/${CP_ADMIN_USER}/.ssh"
-install -m 0600 "$KEYFILE" "${ROOT}/home/${CP_ADMIN_USER}/.ssh/authorized_keys"
-in_chroot "$ROOT" chown -R "${CP_ADMIN_USER}:${CP_ADMIN_USER}" "/home/${CP_ADMIN_USER}/.ssh"
+if [ -n "$CP_DEFAULT_PASSWORD" ]; then
+  # A published image needs a login that works for whoever downloaded it.
+  echo "${CP_ADMIN_USER}:${CP_DEFAULT_PASSWORD}" | in_chroot "$ROOT" chpasswd
+else
+  # Keys only. An appliance with a guessable password on a show network is
+  # worse than one you have to bring a key to.
+  in_chroot "$ROOT" passwd -l "$CP_ADMIN_USER" >/dev/null 2>&1 || true
+fi
 
-install -d -m 0700 "${ROOT}/root/.ssh"
-install -m 0600 "$KEYFILE" "${ROOT}/root/.ssh/authorized_keys"
+if [ "$HAVE_KEY" = "1" ]; then
+  install -d -m 0700 "${ROOT}/home/${CP_ADMIN_USER}/.ssh"
+  install -m 0600 "$KEYFILE" "${ROOT}/home/${CP_ADMIN_USER}/.ssh/authorized_keys"
+  in_chroot "$ROOT" chown -R "${CP_ADMIN_USER}:${CP_ADMIN_USER}" "/home/${CP_ADMIN_USER}/.ssh"
+
+  install -d -m 0700 "${ROOT}/root/.ssh"
+  install -m 0600 "$KEYFILE" "${ROOT}/root/.ssh/authorized_keys"
+fi
 
 # Chromium's profile. Given an explicit path outside the admin user's home so
 # that wiping a wedged browser profile is one obvious rm and cannot take an
@@ -223,14 +264,31 @@ do
   Something after armbian_unlock_login reinstated it (usually an apt install)."
 done
 
+# --- redistribution notices --------------------------------------------------
+#
+# The image carries Bitfocus's Companion build and several hundred third-party
+# modules. MIT requires the copyright notice and licence text to travel with
+# them, so they travel in the image, not only in the repo's ATTRIBUTIONS.md —
+# the person holding a flashed card is the one who needs them.
+log "installing licence notices"
+if [ -f "${ROOT}${CP_INSTALL_DIR}/LICENSE.md" ]; then
+  install -m 0644 "${ROOT}${CP_INSTALL_DIR}/LICENSE.md" \
+    "${ROOT}/usr/share/doc/companion-play/companion-LICENSE.md"
+fi
+install -m 0644 "${REPO_ROOT}/ATTRIBUTIONS.md" \
+  "${ROOT}/usr/share/doc/companion-play/ATTRIBUTIONS.md"
+install -m 0644 "${REPO_ROOT}/LICENSE" \
+  "${ROOT}/usr/share/doc/companion-play/LICENSE"
+
 # --- build stamp -------------------------------------------------------------
 {
   echo "companion-play"
   echo "built:     $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "base:      ${ARMBIAN_IMAGE}"
   echo "companion: ${COMPANION_VERSION}+${COMPANION_BUILD}"
-  echo "modules:   ${modcount}"
+  echo "modules:   ${modcount} (licence policy: ${CP_LICENCE_ALLOW})"
   echo "kiosk:     ${CP_KIOSK_ENABLED}"
+  echo "login:     ${CP_ADMIN_USER}$([ -n "$CP_DEFAULT_PASSWORD" ] && echo ' (default password set)')$([ "$HAVE_KEY" = 1 ] && echo ' + ssh key')"
 } > "${ROOT}/etc/companion-play-build"
 
 restore_resolv "$ROOT"

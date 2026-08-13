@@ -33,6 +33,39 @@ COMPANION_URL="https://cf-pub.bitfocus.io/companion/companion/${COMPANION_TARBAL
 # web UI. Drop it in vendor/ and the build will use it.
 MODULE_BUNDLE="companion-offline-module-bundle-${COMPANION_VERSION}-${COMPANION_BUILD}.tar.gz"
 
+# --- Module licence policy ---------------------------------------------------
+#
+# A companion-play image REDISTRIBUTES every module inside it. That is a
+# different obligation from an operator downloading the bundle from Bitfocus
+# themselves, so the image carries only licences on this list and
+# build/filter-modules.mjs deletes the rest at build time.
+#
+# Measured on the 5.0.3 bundle (811 modules, every one declaring a licence in
+# its manifest): 799 MIT, 9 ISC, 3 LGPL-3.0. The three LGPL modules —
+# cleartouch-ippctrl, pnh-opencountdown, pnh-soundr — are removed, costing about
+# 1.1 MB. Anyone who wants them can install them from a bundle downloaded from
+# their own Companion, where no third party is redistributing anything.
+#
+# ISC is on the list because it is functionally MIT. Weak copyleft is not,
+# because complying inside a binary image means shipping a source offer, and an
+# appliance image is the wrong place to carry one.
+CP_LICENCE_ALLOW="MIT,ISC,BSD-2-Clause,BSD-3-Clause,Apache-2.0,0BSD,Unlicense,CC0-1.0"
+
+# --- Login -------------------------------------------------------------------
+#
+# Two shapes, because a public image and a private one want opposite things.
+#
+# With CP_DEFAULT_PASSWORD set, the image ships a documented default password —
+# the Armbian/Raspberry Pi OS convention, and the only thing that makes a
+# published image usable by anyone other than whoever built it.
+#
+# With it empty, the build REQUIRES secrets/authorized_keys and produces a
+# key-only image with the password locked. That is the right shape for a unit
+# going on a show network and is what a private build should use.
+#
+# Both may be set: keys are installed whenever secrets/authorized_keys exists.
+CP_DEFAULT_PASSWORD="companion"
+
 # --- Image -------------------------------------------------------------------
 #
 # Armbian expands the rootfs to fill the card on first boot, so this only has to

@@ -1,0 +1,99 @@
+name: ci
+
+# There is nothing to compile — the image is assembled from pinned downloads on
+# an aarch64 host, which GitHub's runners are not. So CI's job is the half that
+# can be checked anywhere: that the scripts are valid and lint-clean, that the
+# licence filter actually removes what it claims to, and that the pinned
+# Companion build still exists upstream.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # The upstream-pin check is only useful if it runs without a push.
+    - cron: '17 6 * * 1'
+
+jobs:
+  shell:
+    name: shell
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Syntax
+        run: |
+          for f in build/mk build/*.sh overlay/usr/local/bin/* overlay/usr/local/sbin/*; do
+            bash -n "$f" && echo "ok  $f"
+          done
+
+      - name: shellcheck
+        run: |
+          sudo apt-get update && sudo apt-get install -y shellcheck
+          shellcheck -S warning build/mk build/*.sh \
+            overlay/usr/local/bin/* overlay/usr/local/sbin/*
+
+      - name: Executable bits
+        run: |
+          for f in build/mk build/0*.sh overlay/usr/local/bin/* overlay/usr/local/sbin/*; do
+            [ -x "$f" ] || { echo "$f is not executable — it will not run in the image"; exit 1; }
+            echo "ok  $f"
+          done
+
+  licence-filter:
+    name: licence filter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # A fixture rather than the real 459 MB bundle: the point is that the
+      # policy behaves, not that Bitfocus's modules are what they were.
+      - name: Build a fixture bundle
+        run: |
+          mkdir -p /tmp/mods
+          mk() { mkdir -p "/tmp/mods/$1/companion"; printf '{"id":"%s","version":"1.0.0","license":"%s"}' "$1" "$2" > "/tmp/mods/$1/companion/manifest.json"; }
+          mk keep-mit MIT
+          mk keep-isc ISC
+          mk drop-lgpl LGPL-3.0
+          mk drop-agpl AGPL-3.0
+
+      - name: Permissive kept, copyleft dropped
+        run: |
+          node build/filter-modules.mjs /tmp/mods "MIT,ISC" /tmp/report.tsv
+          test -d /tmp/mods/keep-mit  || { echo "MIT module was removed"; exit 1; }
+          test -d /tmp/mods/keep-isc  || { echo "ISC module was removed"; exit 1; }
+          test ! -d /tmp/mods/drop-lgpl || { echo "LGPL module survived"; exit 1; }
+          test ! -d /tmp/mods/drop-agpl || { echo "AGPL module survived"; exit 1; }
+          grep -q 'keep-mit' /tmp/report.tsv || { echo "report missing a kept module"; exit 1; }
+          grep -q '^# drop-lgpl' /tmp/report.tsv || { echo "report missing a removed module"; exit 1; }
+          echo "ok  policy applied and reported"
+
+      # The single most important behaviour: an undeclared licence must fail the
+      # build, not be quietly skipped.
+      - name: An undeclared licence fails the build
+        run: |
+          mkdir -p /tmp/bad/mystery/companion
+          echo '{"id":"mystery","version":"1.0.0"}' > /tmp/bad/mystery/companion/manifest.json
+          if node build/filter-modules.mjs /tmp/bad "MIT" /tmp/bad.tsv; then
+            echo "an undeclared module did NOT fail the build"; exit 1
+          fi
+          echo "ok  undeclared licence rejected"
+
+  upstream-pin:
+    name: pinned Companion build still published
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # A pin that has been withdrawn upstream turns every build into a 404
+      # halfway through. Better to hear it from a scheduled run.
+      - name: Pinned tarball resolves
+        run: |
+          # shellcheck disable=SC1091
+          . build/config.sh
+          echo "pinned: $COMPANION_TARBALL"
+          code=$(curl -sS -o /dev/null -w '%{http_code}' -I "$COMPANION_URL")
+          echo "HEAD $COMPANION_URL -> $code"
+          [ "$code" = "200" ] || { echo "the pinned Companion build is no longer downloadable"; exit 1; }

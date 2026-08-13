@@ -111,6 +111,31 @@ hold**, and it has not been measured yet — see Open questions.
 > (`./node-runtimes/main/bin/node`), so the pattern silently excluded the
 > largest process. Match on `main.js`, not on the runtime path.
 
+## Module licences — scanned, not assumed
+
+An image redistributes every module inside it, so all 811 were scanned from
+their `companion/manifest.json` (falling back to `package.json`):
+
+| Licence | Modules |
+|---|---|
+| MIT | **799** |
+| ISC | 9 |
+| LGPL-3.0 | 3 |
+
+**Every one of the 811 declares a licence, and all 811 declare it in the
+manifest** — the `package.json` fallback never fired. That is a better result
+than expected for 811 community modules, and it is what makes a redistributable
+image defensible at all.
+
+The three LGPL-3.0 modules are `cleartouch-ippctrl` (0.0.5),
+`pnh-opencountdown` (2.0.2) and `pnh-soundr` (2.0.2), together about **1.1 MB**.
+They are excluded from the image by `build/filter-modules.mjs`. Nothing large or
+widely used is lost.
+
+`build/filter-modules.mjs` **fails the build** on a module that declares no
+licence, rather than skipping it. Undeclared is not permissive, and a silent
+skip is precisely the outcome the check exists to prevent.
+
 ## Disk
 
 | Item | Size |
@@ -162,15 +187,15 @@ Ordered by how much they would change the design.
    headline risk. Measure on the VM under a cgroup capped at 2 GB before
    assuming the combination fits.
 3. **USB: one port, four wanted devices.** Keyboard, mouse, touchscreen and a
-   Stream Deck all want the single USB-A. `birddog-re/notes/05` already flags
-   that a hub is required and that the port's current budget is unmeasured — a
-   bus-powered hub with a Stream Deck on it is exactly the case that fails.
-   A self-powered hub is the safe assumption until measured.
+   Stream Deck all want the single USB-A. Earlier research on this hardware
+   already flags that a hub is required and that the port's current budget is
+   unmeasured — a bus-powered hub with a Stream Deck on it is exactly the case
+   that fails. A self-powered hub is the safe assumption until measured.
 4. **Companion Satellite arm64 artifacts.** Assumed to exist; the release page
    did not render its asset list. Confirm before claiming satellite mode works.
-5. **Is the microSD slot fitted?** Inherited from `polecat` and
-   `weblinked-os`, unchanged: insert a card, look for `mmcblk0`. If fitted,
-   every experiment becomes reversible by pulling the card.
+5. **Is the microSD slot fitted?** Unchanged from the sibling appliance
+   projects: insert a card, look for `mmcblk0`. If fitted, every experiment
+   becomes reversible by pulling the card.
 6. **Touchscreen under X.** `hid-multitouch` is a module in Armbian's 6.18
    kernel and `xf86-input-libinput` handles the rest, but no specific panel has
    been tried, and calibration may be needed.

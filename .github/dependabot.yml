@@ -1,0 +1,14 @@
+version: 2
+
+# This repo has no package manifest of its own — the only third-party thing it
+# pins in-tree is the set of GitHub Actions in the CI workflow. Companion and
+# Armbian are pinned in build/config.sh and playbase/base.conf, which dependabot
+# cannot see; bumping those is a deliberate act with a matching module bundle to
+# download, not something to automate. The scheduled `upstream-pin` CI job is
+# what tells us a pin has gone stale.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

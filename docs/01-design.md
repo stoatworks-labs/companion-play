@@ -63,9 +63,16 @@ account with no shell, and its only root privilege is the sudoers line
 Companion needs to install the surface udev rules it generates at runtime, plus
 power control.
 
-`cplay` is the human. Key-only, password locked, in `sudo`. It also owns the X
-session, because the display is a user session and running a browser as a
-service account with USB privileges is not a trade worth making.
+`cplay` is the human, in `sudo`. It also owns the X session, because the display
+is a user session and running a browser as a service account with USB privileges
+is not a trade worth making.
+
+How `cplay` authenticates depends on who the image is for, and both paths must
+keep working. A **published** image ships a documented default password, because
+that is the only thing that makes a downloaded image usable by anyone but its
+builder. A **private** build clears `CP_DEFAULT_PASSWORD`, supplies
+`secrets/authorized_keys`, and gets a key-only account with the password locked
+— which is what a unit going on a show network should have.
 
 ## The display
 
@@ -85,10 +92,11 @@ blank window rather than an error, which is an expensive thing to debug on a
 device with no serial console. `KIOSK_GPU=on` in `/etc/companion-play/kiosk.conf`
 turns it on to test.
 
-> The "no browser on the PLAY" ruling in `birddog-re/notes/05` does **not**
-> apply here. That was about a browser software-decoding 4K H.264 while the VPU
-> idled. Companion's UI decodes nothing. `notes/07` already made the same
-> correction for the openRCS panel.
+> The "no browser on the PLAY" ruling from earlier research on this hardware
+> does **not** apply here. That was about a browser software-decoding 4K H.264
+> while the VPU idled. Companion's UI decodes nothing, so the GLES2 ceiling is
+> irrelevant to it. Check whether a conclusion depends on the video path before
+> reusing it — this one does.
 
 ## Two modes
 
@@ -106,10 +114,10 @@ dark with no obvious cause.
 
 ## What this costs
 
-The unit stops being an NDI/SRT decoder. birdUI is gone, and `flock` — which
-manages *stock* PLAYs through birdUI — does not apply to a converted unit. Both
-are recoverable by reflashing from the factory image, which is why rule 2 in
-`AGENTS.md` exists.
+The unit stops being an NDI/SRT decoder, and the vendor's web UI goes with it —
+along with any fleet tooling that drives PLAYs through that UI. Both are
+recoverable by reflashing from the factory image, which is why "never break the
+way back" is a hard rule in `AGENTS.md` rather than a preference.
 
 ## The constraint that decides everything
 

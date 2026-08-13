@@ -1,7 +1,7 @@
 # 03 — Installing
 
 **Nothing here has been done on hardware.** The partition facts are measured
-(`birddog-re/notes/08`, `polecat/docs/01-boot-chain.md`); the procedure is not.
+(from prior research on this hardware, and from a sibling appliance project); the procedure is not.
 
 ## The two-partition rule
 
@@ -78,7 +78,9 @@ unit before starting.
 
 ## Getting back to stock
 
-Rockchip recovery mode with the factory `PLAY_1.0.30.img` (`RKFW`/`RKAF`;
-`birddog-re/tools/rkfw/unpack_rkfw.py` reads it without Rockchip tooling). This
-restores the whole device including the partitions left untouched above — and
-restores factory state, not the unit's provisioned identity.
+Rockchip recovery mode with the vendor's factory image, which is an `RKFW`
+container wrapping an `RKAF` — readable with Rockchip's own tooling. This
+restores the whole device, including the partitions left untouched above.
+
+It restores **factory** state, not this unit's provisioned identity: its serial,
+hostname and `/userdata` do not come back. Dump a unit before you take it.
