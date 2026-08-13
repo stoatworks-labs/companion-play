@@ -84,16 +84,12 @@ grep -q 'MIT License' "$COMPANION_LICENCE" \
 
 BUNDLE="${VENDOR}/${MODULE_BUNDLE}"
 
-if [ ! -f "$BUNDLE" ]; then
-  # Accept it from the usual download location as a convenience, but copy it in
-  # rather than reaching outside the repo at build time.
-  for cand in "$HOME/Downloads/${MODULE_BUNDLE}"; do
-    if [ -f "$cand" ]; then
-      log "staging module bundle from $cand"
-      cp "$cand" "$BUNDLE"
-      break
-    fi
-  done
+# Accept it from the usual download location as a convenience, but copy it in
+# rather than reaching outside the repo every time the build runs.
+DOWNLOADED="${HOME}/Downloads/${MODULE_BUNDLE}"
+if [ ! -f "$BUNDLE" ] && [ -f "$DOWNLOADED" ]; then
+  log "staging module bundle from ${DOWNLOADED}"
+  cp "$DOWNLOADED" "$BUNDLE"
 fi
 
 [ -f "$BUNDLE" ] || die "no ${MODULE_BUNDLE} in ${VENDOR}/.
