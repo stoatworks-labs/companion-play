@@ -17,6 +17,22 @@ A **replacement OS for the BirdDog PLAY** (Rockchip RK3328) that turns it into a
 self-contained [Bitfocus Companion](https://bitfocus.io/companion) appliance:
 the server, its web UI on the HDMI output, and USB surfaces on the front port.
 
+## What it looks like
+
+Every shot below is the released `v0.1.0` image booted **under QEMU aarch64**,
+not on a PLAY — the hardware half is still unverified, as the notice above says.
+
+![Companion's admin UI on the appliance's HDMI output: Chromium with its tab strip, not kiosk mode](docs/screenshots/hdmi-output.png)
+
+The HDMI output is Chromium under openbox, deliberately **not** `--kiosk` — the
+operator gets the tab strip so web-button pages can sit alongside the admin UI.
+
+![The Modules page, showing the offline bundle preloaded with no internet](docs/screenshots/modules.png)
+
+The module bundle is preloaded, so the unit is useful with no internet at all.
+[Surfaces](docs/screenshots/surfaces.png) shows the Stream Deck and XKeys
+integrations running.
+
 ## Why a PLAY
 
 Not for the silicon — Companion uses none of the PLAY's video hardware. The
