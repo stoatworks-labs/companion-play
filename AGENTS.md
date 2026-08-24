@@ -83,3 +83,10 @@ attached.
   still assumed. **A claim with no command behind it is labelled as an
   assumption.** This project has far more of those than it has facts, and the
   docs are honest about which is which — keep them that way.
+
+## Notes
+
+`docs/NOTES.md` carries this repo's working notes — current status, decisions
+already made, and the traps that have actually bitten. Read it before changing
+anything non-obvious. Cross-cutting fleet knowledge lives in
+[fleet-notes](https://github.com/stoatworks-labs/fleet-notes).
