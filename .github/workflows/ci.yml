@@ -18,7 +18,7 @@ jobs:
     name: shell
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Syntax
         run: |
@@ -43,7 +43,7 @@ jobs:
     name: licence filter
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -85,7 +85,7 @@ jobs:
     name: pinned Companion build still published
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # A pin that has been withdrawn upstream turns every build into a 404
       # halfway through. Better to hear it from a scheduled run.
