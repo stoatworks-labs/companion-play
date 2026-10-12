@@ -7,7 +7,7 @@ person and dated by when each thing was learned — that date is usually the use
 Cross-cutting notes that are not specific to this repo live in
 [fleet-notes](https://github.com/stoatworks-labs/fleet-notes).
 
-*companion-play — PRIVATE replacement OS turning a BirdDog PLAY into a Bitfocus Companion appliance; third playbase consumer*
+*companion-play — PUBLIC replacement OS turning a BirdDog PLAY into a Bitfocus Companion appliance; third playbase consumer*
 
 `~/Projects/companion-play` — **PUBLIC** `stoatworks-labs/companion-play`,
 created 2026-08-13, branch `main`. **Release `v0.1.0` is LIVE, marked

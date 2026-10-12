@@ -14,7 +14,7 @@ tart run wlos-build --no-graphics &
 VM=$(tart ip wlos-build --resolver=arp)
 
 rsync -a --exclude work/ --exclude out/ --exclude cache/ --exclude .git/ \
-  ~/Projects/companion-play/ admin@$VM:~/companion-play/
+  ~/Projects/birddog-play/companion-play/ admin@$VM:~/companion-play/
 
 ssh -n admin@$VM 'cd ~/companion-play && setsid sudo build/mk > build.log 2>&1 < /dev/null &'
 ssh -n admin@$VM 'tail -f ~/companion-play/build.log'

@@ -29,15 +29,19 @@ sudo apt-get install -y rsync cloud-guest-utils e2fsprogs xz-utils curl
 
 ## Inputs
 
-Two things the build needs that are not in the repo:
+Three things the build needs that are not in the repo:
 
-1. **`secrets/authorized_keys`** — at least one public key. `03-make-image.sh`
-   refuses to build without it, because an appliance with no key in it and no
-   console password is a brick.
+1. **`secrets/authorized_keys`** — at least one public key, unless
+   `CP_DEFAULT_PASSWORD` is set in `build/config.sh` (it is by default, for
+   published images). `03-make-image.sh` refuses to build with neither, because
+   an appliance with no key in it and no console password is a brick.
 2. **`vendor/companion-offline-module-bundle-<version>-<build>.tar.gz`** — there
    is no public API for bundles; download it from a running Companion of the
    pinned version (Modules → offline bundle). `02-fetch-companion.sh` will pick
    it up out of `~/Downloads` automatically if it is there.
+3. **A `playbase` checkout** beside this one (or `PLAYBASE=` pointing at it):
+   the shared base and build plumbing for the PLAY appliance images, which
+   `build/lib.sh` sources. It's a private repo.
 
 The Companion release tarball itself is fetched automatically and pinned in
 `build/config.sh`.

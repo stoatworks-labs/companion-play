@@ -121,7 +121,8 @@ build/mk
 ```
 
 You supply the offline module bundle (downloaded from your own Companion's
-Modules page); everything else is fetched and checksummed.
+Modules page) and a checkout of `playbase`, the shared PLAY appliance base, beside
+this repo (it's private); everything else is fetched and checksummed.
 
 ## This is not a BirdDog or Bitfocus product
 
