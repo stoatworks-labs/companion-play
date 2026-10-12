@@ -2,16 +2,16 @@
 
 > **AI-assisted project.** This codebase was created with [Claude](https://claude.com/claude-code)
 > (Anthropic), directed and reviewed by a human author. Companion 5.0.3 has been
-> started on aarch64 Linux with the full offline module bundle — all 811 modules
-> enumerated, admin UI answering, surface plugins running — but **no part of this
+> started on aarch64 Linux with the full offline module bundle (all 811 modules
+> enumerated, admin UI answering, surface plugins running), but **no part of this
 > has ever run on BirdDog PLAY hardware**, and the display, the installer and the
 > USB surface path are unverified. See [docs/02-verification.md](docs/02-verification.md).
 
 > ### ⚠️ Early beta
 >
 > Treat this as a design that boots on paper. The image builds and the software
-> stack is proven on the right CPU architecture; the hardware half is not.
-> Do not put this on a unit you need for a show.
+> stack is proven on the right CPU architecture; the hardware half isn't.
+> Don't put this on a unit you need for a show.
 
 A **replacement OS for the BirdDog PLAY** (Rockchip RK3328) that turns it into a
 self-contained [Bitfocus Companion](https://bitfocus.io/companion) appliance:
@@ -20,12 +20,12 @@ the server, its web UI on the HDMI output, and USB surfaces on the front port.
 ## What it looks like
 
 Every shot below is the released `v0.1.0` image booted **under QEMU aarch64**,
-not on a PLAY — the hardware half is still unverified, as the notice above says.
+not on a PLAY. The hardware half is still unverified, as the notice above says.
 
 ![Companion's admin UI on the appliance's HDMI output: Chromium with its tab strip, not kiosk mode](docs/screenshots/hdmi-output.png)
 
-The HDMI output is Chromium under openbox, deliberately **not** `--kiosk` — the
-operator gets the tab strip so web-button pages can sit alongside the admin UI.
+The HDMI output is Chromium under openbox, and on purpose it's **not** `--kiosk`:
+the operator gets the tab strip, so web-button pages can sit alongside the admin UI.
 
 ![The Modules page, showing the offline bundle preloaded with no internet](docs/screenshots/modules.png)
 
@@ -35,10 +35,10 @@ integrations running.
 
 ## Why a PLAY
 
-Not for the silicon — Companion uses none of the PLAY's video hardware. The
-reason is **supply**: PLAYs turn up cheap in quantity, and one is a fanless,
-metal-cased aarch64 box with HDMI, gigabit Ethernet and USB host. That is the
-shape of a Companion appliance, and better packaged than a Pi in a case.
+Not for the silicon: Companion uses none of the PLAY's video hardware. The
+reason is **supply**. PLAYs turn up cheap in quantity, and each one is a fanless,
+metal-cased aarch64 box with HDMI, gigabit Ethernet and USB host. That's the
+shape of a Companion appliance, and it's better packaged than a Pi in a case.
 
 The one thing the hardware does buy is the **HDMI output**. Companion Pi is
 headless and its screen shows nothing. Here the display is part of the product:
@@ -65,8 +65,8 @@ the base OS supplies libraries only: `libatomic1`, `libfontconfig1`,
 companion-play-mode server|satellite|status
 ```
 
-- **server** (default) — the full Companion host, admin UI on `:8000`.
-- **satellite** — Companion Satellite, driving this unit's surfaces from a
+- **server** (default): the full Companion host, admin UI on `:8000`.
+- **satellite**: Companion Satellite, driving this unit's surfaces from a
   Companion running elsewhere. **Scaffolded, not verified**: the switch refuses
   unless the binary is present, rather than stopping the server and starting
   nothing.
@@ -75,14 +75,14 @@ companion-play-mode server|satellite|status
 
 **Only `boot` (p4) and `rootfs` (p8) are replaced.** `uboot`, `trust`, `misc`
 and `recovery` stay stock, so Rockchip recovery mode *and* the vendor recovery
-partition both survive — the device can be returned to factory firmware.
+partition both survive, and the device can be returned to factory firmware.
 
 `userdata` (p9, which grows to the end of the eMMC) holds Companion's config,
 database, logs and any modules you add, so **reflashing the rootfs to upgrade
 Companion does not wipe your configuration**.
 
-If the PLAY's microSD slot turns out to be physically fitted — still an open
-question — you can run entirely from a card and never touch the eMMC. See
+If the PLAY's microSD slot turns out to be physically fitted (still an open
+question), you can run entirely from a card and never touch the eMMC. See
 [docs/03-installing.md](docs/03-installing.md).
 
 ## Default login
@@ -94,26 +94,26 @@ makes a published image usable by anyone but its builder:
 user: cplay    password: companion
 ```
 
-**Change it.** `passwd` on first login. If you are building your own image, put
+**Change it.** `passwd` on first login. If you're building your own image, put
 a public key in `secrets/authorized_keys` and clear `CP_DEFAULT_PASSWORD` in
-`build/config.sh` for a key-only image with no password at all — the right shape
-for anything going on a show network.
+`build/config.sh` for a key-only image with no password at all, which is the right
+shape for anything going on a show network.
 
 ## Known limits
 
 - **2 GB of RAM is the real constraint.** Companion idles at ~509 MB with zero
   connections, and every connection is another Node child process. Chromium is
-  on top of that. No connection count has been measured; do not assume one.
+  on top of that. No connection count has been measured; don't assume one.
 - **One USB-A port.** Keyboard, mouse, touchscreen and a Stream Deck all want
-  it, so a **self-powered hub** is required. The port's current budget has not
-  been measured, and a bus-powered hub with a Stream Deck on it is exactly the
-  case that fails.
+  it, so a **self-powered hub** is required. The port's current budget hasn't
+  been measured, and a bus-powered hub with a Stream Deck on it is the case that
+  fails.
 - **Nothing has run on hardware.** Repeated because it matters.
 
 ## Build
 
-An aarch64 Linux host, as root — the build runs the target's own binaries in a
-chroot, including Companion's bundled Node. See
+You need an aarch64 Linux host, as root, because the build runs the target's own
+binaries in a chroot, including Companion's bundled Node. See
 [docs/04-building.md](docs/04-building.md).
 
 ```bash
